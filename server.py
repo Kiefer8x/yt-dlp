@@ -3,11 +3,67 @@ import subprocess
 import json
 import sys
 import re
+import uuid
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__, static_folder='.', static_url_path='', template_folder='.')
 
 # Run the local yt_dlp module using the current python interpreter, bypassing SSL checks
 YT_DLP_CMD = [sys.executable, "-m", "yt_dlp", "--no-check-certificate"]
+
+# Download Queue State
+tasks = {}
+executor = ThreadPoolExecutor(max_workers=5)
+
+def run_download(task_id, cmd):
+    tasks[task_id]['status'] = 'Downloading'
+    try:
+        # We add --newline to ensure we get line-by-line output for parsing
+        if '--newline' not in cmd:
+            cmd.append('--newline')
+        
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        for line in process.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Keep the last 50 log lines to avoid memory leaks but retain error context
+            tasks[task_id]['log'].append(line)
+            if len(tasks[task_id]['log']) > 50:
+                tasks[task_id]['log'].pop(0)
+            
+            # Parse progress percentage
+            if '[download]' in line and '%' in line:
+                pct_match = re.search(r'([0-9.]+)%', line)
+                if pct_match:
+                    tasks[task_id]['progress'] = float(pct_match.group(1))
+                
+                spd_match = re.search(r'at\s+([0-9.a-zA-Z/]+)', line)
+                if spd_match:
+                    tasks[task_id]['speed'] = spd_match.group(1)
+                    
+                eta_match = re.search(r'ETA\s+([0-9:]+)', line)
+                if eta_match:
+                    tasks[task_id]['eta'] = eta_match.group(1)
+
+        process.wait()
+        if process.returncode == 0:
+            tasks[task_id]['status'] = 'Completed'
+            tasks[task_id]['progress'] = 100.0
+        else:
+            tasks[task_id]['status'] = 'Error'
+    except Exception as e:
+        tasks[task_id]['status'] = 'Error'
+        tasks[task_id]['log'].append(str(e))
 
 # Force allow Cross-Origin requests to prevent "Failed to fetch" errors
 @app.after_request
@@ -119,6 +175,7 @@ def download():
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
+    title = data.get('title', 'Unknown Video')
     resolutions = data.get('resolutions', [])
     video_containers = data.get('videoContainers', [])
     video_codecs = data.get('videoCodecs', [])
@@ -184,14 +241,27 @@ def download():
 
     cmd.append(url)
 
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-             return jsonify({'status': 'Success', 'output': result.stdout})
-        else:
-             return jsonify({'status': 'Error', 'output': result.stderr}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # Generate unique ID and add to queue
+    task_id = str(uuid.uuid4())
+    tasks[task_id] = {
+        'id': task_id,
+        'title': title,
+        'url': url,
+        'status': 'Queued',
+        'progress': 0.0,
+        'speed': '0MiB/s',
+        'eta': '--:--',
+        'log': []
+    }
+    
+    # Submit to the thread pool (Max 5 concurrent)
+    executor.submit(run_download, task_id, cmd)
+    
+    return jsonify({'status': 'Success', 'task_id': task_id, 'message': 'Added to queue'})
+
+@app.route('/api/status', methods=['GET'])
+def status():
+    return jsonify(tasks)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
