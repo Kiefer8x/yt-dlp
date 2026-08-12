@@ -5,6 +5,8 @@ import sys
 import re
 import uuid
 import threading
+import os
+import platform
 from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__, static_folder='.', static_url_path='', template_folder='.')
@@ -180,6 +182,7 @@ def download():
         return jsonify({'error': 'URL is required'}), 400
 
     title = data.get('title', 'Unknown Video')
+    download_path = data.get('downloadPath', '')
     resolutions = data.get('resolutions', [])
     video_containers = data.get('videoContainers', [])
     video_codecs = data.get('videoCodecs', [])
@@ -187,6 +190,10 @@ def download():
     extras = data.get('extras', {})
 
     cmd = YT_DLP_CMD + ['--no-colors'] # Strip terminal colors for clean web logs
+
+    # Apply Download Path if provided
+    if download_path:
+        cmd.extend(['-P', download_path])
 
     if extras.get('playlist'):
         cmd.append('--yes-playlist')
@@ -271,6 +278,62 @@ def download():
 @app.route('/api/status', methods=['GET'])
 def status():
     return jsonify(tasks)
+
+@app.route('/api/browse', methods=['POST', 'OPTIONS'])
+def browse_directories():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    data = request.get_json() or {}
+    req_path = data.get('path', '').strip()
+
+    # Default to user home or current working directory if empty
+    if not req_path:
+        req_path = os.path.expanduser('~')
+        if not os.path.exists(req_path):
+            req_path = os.getcwd()
+
+    # Resolve absolute path
+    try:
+        req_path = os.path.abspath(req_path)
+        if not os.path.exists(req_path):
+            req_path = os.getcwd()
+    except Exception:
+        req_path = os.getcwd()
+
+    # Get system drives (Windows support like C:\, D:\)
+    drives = []
+    if platform.system() == 'Windows':
+        import string
+        for letter in string.ascii_uppercase:
+            drive = f"{letter}:\\"
+            if os.path.exists(drive):
+                drives.append(drive)
+    else:
+        drives = ['/', os.path.expanduser('~')]
+
+    subfolders = []
+    try:
+        with os.scandir(req_path) as entries:
+            for entry in entries:
+                if entry.is_dir():
+                    # Skip hidden folders if desired, or keep them
+                    subfolders.append({
+                        'name': entry.name,
+                        'path': entry.path
+                    })
+        # Sort subfolders alphabetically
+        subfolders = sorted(subfolders, key=lambda x: x['name'].lower())
+    except PermissionError:
+        return jsonify({'error': 'Permission denied to access this folder'}), 403
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({
+        'currentPath': req_path,
+        'drives': drives,
+        'subfolders': subfolders
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

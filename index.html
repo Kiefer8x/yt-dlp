@@ -55,13 +55,30 @@
         </h1>
 
         <!-- Input Section -->
-        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <div class="flex flex-col sm:flex-row gap-3 mb-4">
             <input type="text" id="urlInput" placeholder="Enter YouTube or supported link here..." 
                    class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
             <button id="discoverBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors flex items-center justify-center">
                 <span>Discover</span>
                 <div id="discoverLoader" class="loader hidden"></div>
             </button>
+        </div>
+
+        <!-- Download Path Section -->
+        <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <label class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                Download Location (Absolute Path)
+            </label>
+            <div class="flex gap-2">
+                <input type="text" id="downloadPath" placeholder="e.g. /Users/username/Downloads/yt-dlp (leave empty to save in server folder)" 
+                       class="flex-1 px-4 py-2 text-sm border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 transition-all shadow-inner">
+                <button id="browseBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+                    <span>Browse...</span>
+                </button>
+            </div>
+            <p class="text-xs text-blue-600 mt-2 font-medium">Auto-saves as you type. All future downloads will be sent to this folder.</p>
         </div>
 
         <div id="videoTitle" class="text-sm font-medium text-gray-600 mb-4 hidden"></div>
@@ -128,6 +145,49 @@
 
     </div>
 
+    <!-- Folder Browser Modal -->
+    <div id="folderModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+            <!-- Modal Header -->
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                    Select Folder & Drive
+                </h3>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body / Quick Nav / Current Path -->
+            <div class="p-4 border-b bg-gray-100 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Drives & Quick Access</span>
+                </div>
+                <div id="drivesBar" class="flex flex-wrap gap-2">
+                    <!-- Loaded dynamically -->
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <button id="parentDirBtn" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-40" title="Go up one level">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                    </button>
+                    <input type="text" id="modalCurrentPathInput" class="flex-1 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                </div>
+            </div>
+
+            <!-- Folder List -->
+            <div id="folderListContainer" class="flex-1 overflow-y-auto p-2 divide-y divide-gray-100 min-h-[250px] max-h-[350px]">
+                <div class="flex justify-center items-center h-full text-gray-400 text-sm py-12">Loading folders...</div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-b bg-gray-50 flex justify-end gap-2">
+                <button id="cancelModalBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
+                <button id="selectFolderBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">Select This Folder</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const urlInput = document.getElementById('urlInput');
         const discoverBtn = document.getElementById('discoverBtn');
@@ -144,8 +204,135 @@
         const downloadLoader = document.getElementById('downloadLoader');
         const outputArea = document.getElementById('outputArea');
         const logText = document.getElementById('logText');
+        const downloadPath = document.getElementById('downloadPath');
         
-        const extraAudioOnly = document.getElementById('extraAudioOnly');
+        // Browser Modal Elements
+        const browseBtn = document.getElementById('browseBtn');
+        const folderModal = document.getElementById('folderModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        const selectFolderBtn = document.getElementById('selectFolderBtn');
+        const folderListContainer = document.getElementById('folderListContainer');
+        const modalCurrentPathInput = document.getElementById('modalCurrentPathInput');
+        const parentDirBtn = document.getElementById('parentDirBtn');
+        const drivesBar = document.getElementById('drivesBar');
+
+        let activeBrowserPath = '';
+
+        // Open Folder Modal
+        browseBtn.addEventListener('click', async () => {
+            folderModal.classList.remove('hidden');
+            let initialPath = downloadPath.value.trim();
+            if (!initialPath) initialPath = ''; // Server will fallback to home/current
+            await fetchDirectory(initialPath);
+        });
+
+        const closeModal = () => folderModal.classList.add('hidden');
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelModalBtn.addEventListener('click', closeModal);
+        folderModal.addEventListener('click', (e) => {
+            if (e.target === folderModal) closeModal();
+        });
+
+        // Fetch directory contents from Python backend
+        async function fetchDirectory(path) {
+            folderListContainer.innerHTML = '<div class="flex justify-center items-center h-full text-gray-400 text-sm py-12">Loading folders...</div>';
+            try {
+                const response = await fetch('http://127.0.0.1:5001/api/browse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: path })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to list directory');
+
+                activeBrowserPath = data.currentPath;
+                modalCurrentPathInput.value = activeBrowserPath;
+
+                // Render Drives
+                if (data.drives && data.drives.length > 0) {
+                    drivesBar.innerHTML = data.drives.map(drive => `
+                        <button onclick="fetchDirectory('${drive.replace(/\\/g, '\\\\')}')" class="px-2.5 py-1 bg-white border border-blue-200 hover:bg-blue-100 text-blue-800 text-xs rounded-md font-mono shadow-sm transition-colors">
+                            ${drive}
+                        </button>
+                    `).join('');
+                } else {
+                    drivesBar.innerHTML = '<span class="text-xs text-gray-400">No drives available</span>';
+                }
+
+                // Render Subfolders
+                if (data.subfolders.length === 0) {
+                    folderListContainer.innerHTML = '<div class="text-center text-gray-400 text-sm py-12">This folder is empty</div>';
+                    return;
+                }
+
+                folderListContainer.innerHTML = data.subfolders.map(folder => `
+                    <div onclick="fetchDirectory('${folder.path.replace(/\\/g, '\\\\')}')" class="flex items-center gap-3 p-2.5 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors group">
+                        <svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="name 0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                        <span class="text-sm font-medium text-gray-700 group-hover:text-blue-900 truncate">${folder.name}</span>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                folderListContainer.innerHTML = `<div class="text-center text-red-500 text-xs p-6">Error: ${err.message}</div>`;
+            }
+        }
+
+        parentDirBtn.addEventListener('click', async () => {
+            // Get parent path via backend or simple string manipulation
+            const parts = activeBrowserPath.split(/[/\\]/);
+            parts.pop();
+            let parentPath = parts.join('/');
+            if (!parentPath && activeBrowserPath.includes('\\')) parentPath = activeBrowserPath.substring(0, 3); // Windows root support
+            await fetchDirectory(parentPath || '/');
+        });
+
+        modalCurrentPathInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                await fetchDirectory(modalCurrentPathInput.value.trim());
+            }
+        });
+
+        selectFolderBtn.addEventListener('click', () => {
+            if (activeBrowserPath) {
+                downloadPath.value = activeBrowserPath;
+                localStorage.setItem('ytDlpDownloadPath', activeBrowserPath);
+            }
+            closeModal();
+        });
+
+        // Load saved download path on startup
+        const savedPath = localStorage.getItem('ytDlpDownloadPath');
+        if (savedPath) {
+            downloadPath.value = savedPath;
+        }
+
+        // Auto-save the download path whenever the user types
+        downloadPath.addEventListener('input', (e) => {
+            localStorage.setItem('ytDlpDownloadPath', e.target.value);
+        });
+
+        // Reset UI when a new link is pasted or URL changes
+        urlInput.addEventListener('input', () => {
+            optionsSection.classList.add('opacity-50', 'pointer-events-none');
+            videoTitle.classList.add('hidden');
+            outputArea.classList.add('hidden');
+            logText.textContent = '';
+            
+            // Clear the dynamic checkboxes so old video data doesn't persist
+            resolutionGroup.innerHTML = '';
+            videoContainerGroup.innerHTML = '';
+            videoCodecGroup.innerHTML = '';
+            audioFormatGroup.innerHTML = '';
+            
+            // Uncheck all extra features for a clean slate
+            document.querySelectorAll('#extrasGroup input[type="checkbox"]').forEach(cb => cb.checked = false);
+            
+            // Reset the Extract Audio Only logic
+            resolutionGroup.parentElement.classList.remove('opacity-50', 'pointer-events-none');
+            videoContainerGroup.parentElement.classList.remove('opacity-50', 'pointer-events-none');
+            videoCodecGroup.parentElement.classList.remove('opacity-50', 'pointer-events-none');
+        });
 
         // UX: Disable video options when "Extract Audio Only" is checked
         extraAudioOnly.addEventListener('change', (e) => {
@@ -295,6 +482,7 @@
             const payload = {
                 url: url,
                 title: videoTitle.textContent.replace("Found: ", ""),
+                downloadPath: downloadPath.value.trim(),
                 resolutions: Array.from(document.querySelectorAll('input[data-type="res"]:checked')).map(cb => cb.value),
                 videoContainers: Array.from(document.querySelectorAll('input[data-type="vcont"]:checked')).map(cb => cb.value),
                 videoCodecs: Array.from(document.querySelectorAll('input[data-type="vcodec"]:checked')).map(cb => cb.value),
@@ -325,8 +513,7 @@
                     queueDrawer.classList.remove('translate-x-full');
                     // Reset UI for next link
                     urlInput.value = '';
-                    optionsSection.classList.add('opacity-50', 'pointer-events-none');
-                    videoTitle.classList.add('hidden');
+                    urlInput.dispatchEvent(new Event('input')); // Triggers the clean slate logic above
                 } else {
                     alert("Failed to queue download: " + (result.error || "Unknown error"));
                 }
