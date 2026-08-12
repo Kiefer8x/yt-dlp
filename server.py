@@ -55,6 +55,10 @@ def run_download(task_id, cmd):
                 if eta_match:
                     tasks[task_id]['eta'] = eta_match.group(1)
 
+            # Catch ffmpeg missing error and alert the UI
+            if 'ffmpeg is not installed' in line.lower():
+                tasks[task_id]['log'].append("CRITICAL: FFMPEG is missing! Audio & Video will not merge. Please install ffmpeg.")
+
         process.wait()
         if process.returncode == 0:
             tasks[task_id]['status'] = 'Completed'
@@ -70,7 +74,7 @@ def run_download(task_id, cmd):
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     return response
 
 @app.route('/')
@@ -233,6 +237,11 @@ def download():
             sort_prefs.append(f'vcodec:{video_codecs[0]}')
         if video_containers:
             sort_prefs.append(f'ext:{video_containers[0]}')
+            # Force yt-dlp to merge the audio and video into the selected container
+            cmd.extend(['--merge-output-format', video_containers[0]])
+            
+        if audio_formats:
+            sort_prefs.append(f'aext:{audio_formats[0]}')
             
         if sort_prefs:
             cmd.extend(['-S', ','.join(sort_prefs)])
@@ -264,4 +273,4 @@ def status():
     return jsonify(tasks)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)

@@ -144,6 +144,19 @@
         const downloadLoader = document.getElementById('downloadLoader');
         const outputArea = document.getElementById('outputArea');
         const logText = document.getElementById('logText');
+        
+        const extraAudioOnly = document.getElementById('extraAudioOnly');
+
+        // UX: Disable video options when "Extract Audio Only" is checked
+        extraAudioOnly.addEventListener('change', (e) => {
+            const isAudioOnly = e.target.checked;
+            resolutionGroup.parentElement.classList.toggle('opacity-50', isAudioOnly);
+            resolutionGroup.parentElement.classList.toggle('pointer-events-none', isAudioOnly);
+            videoContainerGroup.parentElement.classList.toggle('opacity-50', isAudioOnly);
+            videoContainerGroup.parentElement.classList.toggle('pointer-events-none', isAudioOnly);
+            videoCodecGroup.parentElement.classList.toggle('opacity-50', isAudioOnly);
+            videoCodecGroup.parentElement.classList.toggle('pointer-events-none', isAudioOnly);
+        });
 
         // New Queue Elements
         const toggleQueueBtn = document.getElementById('toggleQueueBtn');
@@ -199,7 +212,7 @@
         // Poll the server for status updates every 1 second
         setInterval(async () => {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/status');
+                const response = await fetch('http://127.0.0.1:5001/api/status');
                 currentTasks = await response.json();
                 renderQueue();
             } catch (err) {
@@ -242,7 +255,7 @@
 
             try {
                 // EXPLICIT ABSOLUTE URL to prevent 'Failed to fetch' if using file:///
-                const response = await fetch('http://127.0.0.1:5000/api/discover', { 
+                const response = await fetch('http://127.0.0.1:5001/api/discover', { 
                    method: 'POST', 
                    headers: {'Content-Type': 'application/json'}, 
                    body: JSON.stringify({url: url}) 
@@ -300,7 +313,7 @@
             downloadLoader.classList.remove('hidden');
 
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/download', {
+                const response = await fetch('http://127.0.0.1:5001/api/download', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
