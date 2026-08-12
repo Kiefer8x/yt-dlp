@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yt-dlp Web Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <svg class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+            yt-dlp Web UI
+        </h1>
+
+        <!-- Input Section -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <input type="text" id="urlInput" placeholder="Enter YouTube or supported link here..." 
+                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+            <button id="discoverBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors flex items-center justify-center">
+                <span>Discover</span>
+                <div id="discoverLoader" class="loader hidden"></div>
+            </button>
+        </div>
+
+        <div id="videoTitle" class="text-sm font-medium text-gray-600 mb-4 hidden"></div>
+
+        <!-- Options Section (Initially disabled/empty) -->
+        <div id="optionsSection" class="opacity-50 pointer-events-none transition-opacity duration-300">
+            
+            <div class="mb-5">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Resolution & FPS</h3>
+                <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2" id="resolutionGroup"></div>
+            </div>
+
+            <div class="mb-5">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Video Container</h3>
+                <div class="flex flex-wrap gap-2" id="videoContainerGroup"></div>
+            </div>
+
+            <div class="mb-5">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Video Codec</h3>
+                <div class="flex flex-wrap gap-2" id="videoCodecGroup"></div>
+            </div>
+
+            <div class="mb-5">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Audio Format</h3>
+                <div class="flex flex-wrap gap-2" id="audioFormatGroup"></div>
+            </div>
+
+            <!-- Extras (yt-dlp Features) -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Extras & Features</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="extrasGroup">
+                    <label class="flex items-center gap-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input type="checkbox" id="extraAudioOnly" class="form-checkbox h-4 w-4 text-blue-600 rounded"> <span class="text-gray-800 text-sm">Extract Audio Only</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input type="checkbox" id="extraPlaylist" class="form-checkbox h-4 w-4 text-blue-600 rounded"> <span class="text-gray-800 text-sm">Download Full Playlist</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input type="checkbox" id="extraSubs" class="form-checkbox h-4 w-4 text-blue-600 rounded"> <span class="text-gray-800 text-sm">Embed Subtitles</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input type="checkbox" id="extraMetadata" class="form-checkbox h-4 w-4 text-blue-600 rounded"> <span class="text-gray-800 text-sm">Embed Metadata</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input type="checkbox" id="extraThumbnail" class="form-checkbox h-4 w-4 text-blue-600 rounded"> <span class="text-gray-800 text-sm">Embed Thumbnail</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input type="checkbox" id="extraChapters" class="form-checkbox h-4 w-4 text-blue-600 rounded"> <span class="text-gray-800 text-sm">Split by Chapters</span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="downloadBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex justify-center items-center">
+                <span>Start Download</span>
+                <div id="downloadLoader" class="loader hidden"></div>
+            </button>
+        </div>
+
+        <!-- Output Log -->
+        <div id="outputArea" class="mt-6 hidden">
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">Output Log:</h3>
+            <pre id="logText" class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-60 overflow-y-auto font-mono whitespace-pre-wrap"></pre>
+        </div>
+
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const discoverBtn = document.getElementById('discoverBtn');
+        const discoverLoader = document.getElementById('discoverLoader');
+        const optionsSection = document.getElementById('optionsSection');
+        
+        const resolutionGroup = document.getElementById('resolutionGroup');
+        const videoContainerGroup = document.getElementById('videoContainerGroup');
+        const videoCodecGroup = document.getElementById('videoCodecGroup');
+        const audioFormatGroup = document.getElementById('audioFormatGroup');
+        
+        const videoTitle = document.getElementById('videoTitle');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const downloadLoader = document.getElementById('downloadLoader');
+        const outputArea = document.getElementById('outputArea');
+        const logText = document.getElementById('logText');
+
+        function logMessage(msg) {
+            outputArea.classList.remove('hidden');
+            logText.textContent += msg + '\n\n';
+            logText.scrollTop = logText.scrollHeight;
+        }
+
+        function createCheckboxHTML(value, isAvailable, type) {
+            const id = `${type}-${value}`;
+            const disabledClass = isAvailable ? 'hover:bg-blue-50 cursor-pointer border-gray-300 bg-white' : 'bg-gray-100 opacity-40 cursor-not-allowed border-gray-200';
+            const inputDisabled = isAvailable ? '' : 'disabled';
+            const textColor = isAvailable ? 'text-gray-800' : 'text-gray-400 line-through';
+            
+            return `
+                <label class="flex items-center gap-2 p-2 border rounded-md transition-colors ${disabledClass}">
+                    <input type="checkbox" id="${id}" value="${value}" data-type="${type}" ${inputDisabled}
+                           class="form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="text-xs sm:text-sm font-medium ${textColor}">${value}</span>
+                </label>
+            `;
+        }
+
+        discoverBtn.addEventListener('click', async () => {
+            const url = urlInput.value.trim();
+            if (!url) {
+                alert("Please enter a URL first.");
+                return;
+            }
+
+            discoverBtn.disabled = true;
+            discoverLoader.classList.remove('hidden');
+            logText.textContent = '';
+            outputArea.classList.add('hidden');
+
+            try {
+                // EXPLICIT ABSOLUTE URL to prevent 'Failed to fetch' if using file:///
+                const response = await fetch('http://127.0.0.1:5000/api/discover', { 
+                   method: 'POST', 
+                   headers: {'Content-Type': 'application/json'}, 
+                   body: JSON.stringify({url: url}) 
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Unknown server error");
+
+                videoTitle.textContent = "Found: " + data.title;
+                videoTitle.classList.remove('hidden');
+
+                // Render Checkbox Groups DYNAMICALLY based on backend response
+                resolutionGroup.innerHTML = data.allResolutions.map(r => createCheckboxHTML(r, data.availableResolutions.includes(r), 'res')).join('');
+                videoContainerGroup.innerHTML = data.allVideoContainers.map(c => createCheckboxHTML(c, data.availableVideoContainers.includes(c), 'vcont')).join('');
+                videoCodecGroup.innerHTML = data.allVideoCodecs.map(c => createCheckboxHTML(c, data.availableVideoCodecs.includes(c), 'vcodec')).join('');
+                audioFormatGroup.innerHTML = data.allAudioFormats.map(a => createCheckboxHTML(a, data.availableAudioFormats.includes(a), 'afmt')).join('');
+
+                optionsSection.classList.remove('opacity-50', 'pointer-events-none');
+                logMessage("Discovery complete. Specific formats loaded.");
+
+            } catch (err) {
+                if (err.message.includes("Failed to fetch")) {
+                    logMessage("CRITICAL ERROR: 'Failed to fetch'.\n\nFix: Ensure the Terminal window running 'python3 server.py' is currently open and active in the background.");
+                } else {
+                    logMessage("Error during discovery: " + err.message);
+                }
+            } finally {
+                discoverBtn.disabled = false;
+                discoverLoader.classList.add('hidden');
+            }
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            const payload = {
+                url: url,
+                resolutions: Array.from(document.querySelectorAll('input[data-type="res"]:checked')).map(cb => cb.value),
+                videoContainers: Array.from(document.querySelectorAll('input[data-type="vcont"]:checked')).map(cb => cb.value),
+                videoCodecs: Array.from(document.querySelectorAll('input[data-type="vcodec"]:checked')).map(cb => cb.value),
+                audioFormats: Array.from(document.querySelectorAll('input[data-type="afmt"]:checked')).map(cb => cb.value),
+                extras: {
+                    audioOnly: document.getElementById('extraAudioOnly').checked,
+                    playlist: document.getElementById('extraPlaylist').checked,
+                    embedSubs: document.getElementById('extraSubs').checked,
+                    embedMetadata: document.getElementById('extraMetadata').checked,
+                    embedThumbnail: document.getElementById('extraThumbnail').checked,
+                    splitChapters: document.getElementById('extraChapters').checked
+                }
+            };
+
+            downloadBtn.disabled = true;
+            downloadLoader.classList.remove('hidden');
+            logMessage(`Starting download request...\nSettings: ${JSON.stringify(payload, null, 2)}`);
+
+            try {
+                // EXPLICIT ABSOLUTE URL
+                const response = await fetch('http://127.0.0.1:5000/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    logMessage("✅ " + result.output);
+                    logMessage("Download completed successfully!");
+                } else {
+                    throw new Error(result.error || result.output || "Unknown backend error");
+                }
+
+            } catch (err) {
+                if (err.message.includes("Failed to fetch")) {
+                    logMessage("CRITICAL ERROR: Connection to server lost. Make sure 'python3 server.py' is still running.");
+                } else {
+                    logMessage("Failed to initiate download: " + err.message);
+                }
+            } finally {
+                downloadBtn.disabled = false;
+                downloadLoader.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
