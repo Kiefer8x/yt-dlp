@@ -81,6 +81,34 @@
             <p class="text-xs text-blue-600 mt-2 font-medium">Auto-saves as you type. All future downloads will be sent to this folder.</p>
         </div>
 
+        <!-- YouTube Authentication / Cookies Section -->
+        <div class="mb-6 bg-amber-50/80 p-4 rounded-lg border border-amber-200">
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    YouTube Authentication (cookies.txt)
+                </label>
+                <span id="cookiesBadge" class="text-xs px-2.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span> Checking...
+                </span>
+            </div>
+            <p class="text-xs text-amber-800 mb-3">
+                Upload your Netscape <code class="bg-amber-100/80 text-amber-900 font-mono px-1 py-0.5 rounded">cookies.txt</code> to bypass age restrictions and sign-in checks. Refresh it whenever YouTube cookies expire.
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="file" id="cookiesFileInput" accept=".txt" class="hidden">
+                <button type="button" id="uploadCookiesBtn" class="bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span>Browse & Upload Cookies</span>
+                </button>
+                <button type="button" id="removeCookiesBtn" class="bg-white hover:bg-red-50 text-red-600 border border-red-200 font-medium px-3 py-2 text-sm rounded-lg transition-colors hidden flex items-center gap-1 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>Remove</span>
+                </button>
+                <span id="cookiesStatusText" class="text-xs text-gray-500 font-medium flex-1 truncate"></span>
+            </div>
+        </div>
+
         <div id="videoTitle" class="text-sm font-medium text-gray-600 mb-4 hidden"></div>
 
         <!-- Options Section (Initially disabled/empty) -->
@@ -525,6 +553,79 @@
                 downloadLoader.classList.add('hidden');
             }
         });
+
+        // --- Cookies Management Logic ---
+        const cookiesBadge = document.getElementById('cookiesBadge');
+        const cookiesFileInput = document.getElementById('cookiesFileInput');
+        const uploadCookiesBtn = document.getElementById('uploadCookiesBtn');
+        const removeCookiesBtn = document.getElementById('removeCookiesBtn');
+        const cookiesStatusText = document.getElementById('cookiesStatusText');
+
+        async function refreshCookiesStatus() {
+            try {
+                const res = await fetch('http://127.0.0.1:5001/api/cookies');
+                const data = await res.json();
+                if (data.exists) {
+                    cookiesBadge.className = 'text-xs px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-800 flex items-center gap-1.5';
+                    cookiesBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> Active';
+                    cookiesStatusText.textContent = `${data.filename} (${(data.size / 1024).toFixed(1)} KB) • Updated: ${data.modified}`;
+                    cookiesStatusText.className = 'text-xs text-green-700 font-medium flex-1 truncate';
+                    removeCookiesBtn.classList.remove('hidden');
+                } else {
+                    cookiesBadge.className = 'text-xs px-2.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 flex items-center gap-1.5';
+                    cookiesBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Not Loaded';
+                    cookiesStatusText.textContent = 'No cookies loaded. Age-restricted videos will prompt for sign-in.';
+                    cookiesStatusText.className = 'text-xs text-gray-500 font-medium flex-1 truncate';
+                    removeCookiesBtn.classList.add('hidden');
+                }
+            } catch (err) {
+                cookiesBadge.className = 'text-xs px-2.5 py-0.5 rounded-full font-medium bg-red-100 text-red-600 flex items-center gap-1.5';
+                cookiesBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-400"></span> Offline';
+            }
+        }
+
+        uploadCookiesBtn.addEventListener('click', () => cookiesFileInput.click());
+
+        cookiesFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            cookiesStatusText.textContent = 'Uploading cookies...';
+            cookiesStatusText.className = 'text-xs text-blue-600 font-medium flex-1 truncate';
+            try {
+                const res = await fetch('http://127.0.0.1:5001/api/cookies/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Upload failed');
+                await refreshCookiesStatus();
+                logMessage('Cookies successfully uploaded and active.');
+            } catch (err) {
+                alert('Failed to upload cookies: ' + err.message);
+                await refreshCookiesStatus();
+            }
+            cookiesFileInput.value = '';
+        });
+
+        removeCookiesBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to remove cookies.txt?')) return;
+            try {
+                const res = await fetch('http://127.0.0.1:5001/api/cookies', { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to remove cookies');
+                await refreshCookiesStatus();
+                logMessage('Cookies file removed.');
+            } catch (err) {
+                alert('Error removing cookies: ' + err.message);
+            }
+        });
+
+        // Check cookies status on page load
+        refreshCookiesStatus();
     </script>
 </body>
 </html>

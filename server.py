@@ -11,8 +11,33 @@ from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__, static_folder='.', static_url_path='', template_folder='.')
 
-# Run the local yt_dlp module using the current python interpreter, bypassing SSL checks
-YT_DLP_CMD = [sys.executable, "-m", "yt_dlp", "--no-check-certificate"]
+import shutil
+import time
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+COOKIES_FILE = os.path.join(BASE_DIR, 'cookies.txt')
+
+def get_yt_dlp_cmd():
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-check-certificate"]
+    
+    # Dynamically check if cookies.txt exists so uploads take effect immediately
+    if os.path.exists(COOKIES_FILE):
+        cmd.extend(['--cookies', COOKIES_FILE])
+
+    # Configure JS runtime and remote solver components for YouTube extraction
+    node_bin = shutil.which('node')
+    if not node_bin:
+        for candidate in ['/opt/homebrew/bin/node', '/usr/local/bin/node', os.path.expanduser('~/.nvm/versions/node')]:
+            if os.path.exists(candidate):
+                node_bin = candidate
+                break
+
+    if node_bin:
+        cmd.extend(['--js-runtimes', f'node:{node_bin}', '--remote-components', 'ejs:github'])
+    elif shutil.which('deno') or os.path.exists('/opt/homebrew/bin/deno'):
+        cmd.extend(['--remote-components', 'ejs:github'])
+    
+    return cmd
 
 # Download Queue State
 tasks = {}
@@ -83,6 +108,57 @@ def add_cors_headers(response):
 def index():
     return render_template('index.html')
 
+@app.route('/api/cookies', methods=['GET'])
+def get_cookies_info():
+    if os.path.exists(COOKIES_FILE):
+        try:
+            stat = os.stat(COOKIES_FILE)
+            return jsonify({
+                'exists': True,
+                'filename': 'cookies.txt',
+                'size': stat.st_size,
+                'modified': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stat.st_mtime))
+            })
+        except Exception as e:
+            return jsonify({'exists': False, 'error': str(e)})
+    return jsonify({'exists': False})
+
+@app.route('/api/cookies/upload', methods=['POST'])
+def upload_cookies():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    file = request.files['file']
+    if not file or file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    try:
+        content = file.read().decode('utf-8', errors='ignore')
+        if not content.strip():
+            return jsonify({'error': 'Uploaded file is empty'}), 400
+
+        with open(COOKIES_FILE, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        stat = os.stat(COOKIES_FILE)
+        return jsonify({
+            'success': True,
+            'message': 'Cookies file uploaded successfully!',
+            'filename': file.filename,
+            'size': stat.st_size,
+            'modified': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stat.st_mtime))
+        })
+    except Exception as e:
+        return jsonify({'error': f'Failed to save cookies: {str(e)}'}), 500
+
+@app.route('/api/cookies', methods=['DELETE'])
+def delete_cookies():
+    try:
+        if os.path.exists(COOKIES_FILE):
+            os.remove(COOKIES_FILE)
+        return jsonify({'success': True, 'message': 'Cookies removed'})
+    except Exception as e:
+        return jsonify({'error': f'Failed to remove cookies: {str(e)}'}), 500
+
 @app.route('/api/discover', methods=['POST', 'OPTIONS'])
 def discover():
     if request.method == 'OPTIONS':
@@ -95,11 +171,37 @@ def discover():
         return jsonify({'error': 'URL is required'}), 400
 
     try:
-        cmd = YT_DLP_CMD + ['-j', '--no-playlist', url]
+        cmd = get_yt_dlp_cmd() + ['-j', '--no-playlist', url]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        info = json.loads(result.stdout)
+        raw_stdout = result.stdout.strip()
+        info = None
+        try:
+            info = json.loads(raw_stdout)
+        except json.JSONDecodeError:
+            # yt-dlp dumps one JSON object per line for playlists or multi-video URLs
+            for line in raw_stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    candidate = json.loads(line)
+                    if isinstance(candidate, dict):
+                        info = candidate
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+        if not info or not isinstance(info, dict):
+            return jsonify({'error': 'Failed to parse video metadata from yt-dlp'}), 500
+
         formats = info.get('formats', [])
+        if not formats and 'entries' in info:
+            for entry in info.get('entries', []):
+                if isinstance(entry, dict) and entry.get('formats'):
+                    formats = entry.get('formats', [])
+                    if not info.get('title') or info.get('title') == 'Unknown Title':
+                        info['title'] = entry.get('title', 'Unknown Title')
+                    break
         
         found_res = set()
         available_video_containers = set()
@@ -189,7 +291,7 @@ def download():
     audio_formats = data.get('audioFormats', [])
     extras = data.get('extras', {})
 
-    cmd = YT_DLP_CMD + ['--no-colors'] # Strip terminal colors for clean web logs
+    cmd = get_yt_dlp_cmd() + ['--no-colors'] # Strip terminal colors for clean web logs
 
     # Apply Download Path if provided
     if download_path:
