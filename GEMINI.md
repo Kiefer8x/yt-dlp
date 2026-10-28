@@ -56,6 +56,7 @@ To prevent context loss during a power failure, disconnect, or system crash, you
 - **High Availability (HA):** All code, network connections, and services designed or modified MUST focus strictly on high availability and fault tolerance.
 - **App Deployment:** Whenever deploying an app version of the code, you MUST adhere to the following guide:
   `$WS/Munki-Managed-Home-Software/VAULTFS_PUBLISHING_GUIDE.md`
+- **CRITICAL - NEVER Install to /Applications:** After building universal binaries, NEVER install or copy directly to `/Applications/`. All applications MUST only be published to the VaultFS repository and distributed through Munki Managed Software.
 
 ---
 
