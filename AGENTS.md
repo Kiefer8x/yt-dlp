@@ -54,8 +54,11 @@ To prevent context loss during a power failure, disconnect, or system crash, you
 
 ## 7. ARCHITECTURE & DEPLOYMENT MANDATES
 - **High Availability (HA):** All code, network connections, and services designed or modified MUST focus strictly on high availability and fault tolerance.
-- **App Deployment:** Whenever deploying an app version of the code, you MUST adhere to the following guide:
-  `$WS/Munki-Managed-Home-Software/VAULTFS_PUBLISHING_GUIDE.md`
+- **CRITICAL - INTRANET PRODUCTION DEPLOYMENT MANDATE (NEVER LOCALHOST-ONLY):**
+  - All services, web applications, dashboards, and background engines designed for the KBN1 ecosystem are production Intranet services accessed via `https://kbn1.com` or dedicated LAN endpoints.
+  - **A localhost-only build or local desktop test is STRICTLY INCOMPLETE.** Every code change, frontend update, and backend feature must be deployed to the authoritative Intranet backend/host node (e.g. M4 Mini, Synology NAS, or Ryzen Server) and restarted to be considered done.
+  - Always commit and push changes to `origin/main` so that all machines sync the latest code.
+- **App Packaging & Distribution:** Whenever deploying macOS client app binaries, publish exclusively to the VaultFS repository for Munki distribution per `$WS/Munki-Managed-Home-Software-KBN1-AppStore/VAULTFS_PUBLISHING_GUIDE.md`.
 - **CRITICAL - NEVER Install to /Applications:** After building universal binaries, NEVER install or copy directly to `/Applications/`. All applications MUST only be published to the VaultFS repository and distributed through Munki Managed Software.
 
 ---
