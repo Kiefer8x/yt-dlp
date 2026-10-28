@@ -11,10 +11,17 @@ These directives govern the operational behavior, file management, and project t
   ```bash
   WS="$HOME/Documents/Github-$(scutil --get ComputerName 2>/dev/null || hostname -s)"
   ```
+- Every computer syncs the same repos (via `Github-Sync-All/Sync_All_Projects.command`) into its own `~/Documents/Github-<ComputerName>/` folder (e.g. `Github-M4 Mini`, `Github-M5 Air`). Folder names differ per computer; the repos inside are identical.
+- **All paths in this document and in any repo are relative to `$WS`.** If you encounter a hardcoded absolute path (e.g. `/Users/kiefer/Desktop/Github/...` or another computer's `Github-<Name>` folder), treat it as a relic and substitute the equivalent path under the current `$WS`.
 
 ## 3. SESSION START PROTOCOL
 1. **Resolve Workspace:** Execute the dynamic workspace path resolution above.
 2. **Context Synchronization:** You MUST read `SCRATCHPAD.md` first. This provides the last conversation update, the current working state, and the next immediate step.
+
+## 3A. CREDENTIALS & REMOTE ACCESS (`common-element`)
+- **Credentials Directive:** Always check `$WS/common-element/` for shared credentials, host IPs, passwords, tokens, and machine configurations before asking or writing credentials. Key files: `credentials_combined.env`, `credentials_catalog.json`, `network_ip_inventory.md` / `.json`, `vault.py`.
+- **Access Directive (SSH / NAS / Other Computers):** Whenever you need credentials, or access to another NAS, computer, or device (SSH, SMB, ADB, etc.), look it up in `$WS/common-element/` first. Use what you find there to connect directly. Only ask the user if the entry is missing, then add the new info back to `common-element`.
+- `common-element` has its own authoritative blocking directive: never apply this document's tracking/bootstrap rules inside it, and never print or commit decrypted secrets.
 
 ## 4. FILE MANAGEMENT & TASK EXECUTION
 You must differentiate between **Actionable** files and **Historical/Archive** files.
@@ -48,7 +55,7 @@ To prevent context loss during a power failure, disconnect, or system crash, you
 ## 7. ARCHITECTURE & DEPLOYMENT MANDATES
 - **High Availability (HA):** All code, network connections, and services designed or modified MUST focus strictly on high availability and fault tolerance.
 - **App Deployment:** Whenever deploying an app version of the code, you MUST adhere to the following guide:
-  `/Users/kiefer/Desktop/Github/Munki-Managed-Home-Software/VAULTFS_PUBLISHING_GUIDE.md`
+  `$WS/Munki-Managed-Home-Software/VAULTFS_PUBLISHING_GUIDE.md`
 
 ---
 
