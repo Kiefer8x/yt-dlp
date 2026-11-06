@@ -1,48 +1,51 @@
 # 🤖 SYSTEM DIRECTIVES: DUAL-AGENT PROJECT MANAGEMENT
 
-These directives govern the operational behavior, file management, and project tracking for this repository. Both **Gemini** and **Claude** are required to strictly adhere to these rules to maintain project continuity and system integrity.
+> [!IMPORTANT]
+> ### 🔒 WORKSPACE LOCK & CROSS-FOLDER CONTAMINATION GUARD
+> **Dynamic Local Root:**
+> ```bash
+> WS="$HOME/Documents/Github-$(scutil --get ComputerName 2>/dev/null || hostname -s)"
+> ```
+> 1. **Strict Machine Isolation:** All file reads, writes, and shell commands MUST target `$WS`. Never modify or execute commands inside another machine's `~/Documents/Github-*` directory.
+> 2. **Auto-Remap & Zero Token Waste:** If directed to a path containing another machine (e.g. `Github-M5 Air` while on `M4 Mini`), instantly rewrite the path to `$WS/<Repo>/...`. If you already read a synced file via a foreign path, **do NOT re-read it** (contents are identical)—simply lock all subsequent operations to `$WS`.
+
+These directives govern the operational behavior, file management, and project tracking for this repository. Both **Gemini** and **Claude** adhere to these rules for continuity and integrity.
 
 ## 1. AGENT ROLES & PERMISSIONS
-- **Equal & Unrestricted Roles:** Gemini and Claude share equal roles. Both agents are fully authorized to brainstorm, plan, inspect code, diagnose bugs, write code, and implement changes whenever requested. There are no operational boundaries between the agents.
+- **Equal & Unrestricted Roles:** Gemini and Claude share equal roles. Both agents brainstorm, plan, inspect, diagnose, and implement code without operational boundaries.
 
-## 2. WORKSPACE & ENVIRONMENT INITIALIZATION
-**CRITICAL:** Never hardcode a workspace path. Every development computer syncs all repositories into a dynamic, computer-specific folder. 
-- At the start of **every** session, you MUST resolve the workspace path using the following bash logic:
-  ```bash
-  WS="$HOME/Documents/Github-$(scutil --get ComputerName 2>/dev/null || hostname -s)"
-  ```
-- Every computer syncs the same repos (via `Github-Sync-All/Sync_All_Projects.command`) into its own `~/Documents/Github-<ComputerName>/` folder (e.g. `Github-M4 Mini`, `Github-M5 Air`). Folder names differ per computer; the repos inside are identical.
-- **All paths in this document and in any repo are relative to `$WS`.** If you encounter a hardcoded absolute path (e.g. `/Users/kiefer/Desktop/Github/...` or another computer's `Github-<Name>` folder), treat it as a relic and substitute the equivalent path under the current `$WS`.
+## 2. WORKSPACE SPECIFICATIONS
+- Every computer syncs identical repos (via `Github-Sync-All/Sync_All_Projects.command`) into its local `$WS` folder.
+- **All project paths are relative to `$WS`.** Any hardcoded path referencing another computer or legacy location (e.g. `/Users/kiefer/Desktop/...`) must be automatically substituted with `$WS`.
 
 ## 3. SESSION START PROTOCOL
-1. **Resolve Workspace:** Execute the dynamic workspace path resolution above.
-2. **Context Synchronization:** You MUST read `SCRATCHPAD.md` first. This provides the last conversation update, the current working state, and the next immediate step.
+1. **Lock Workspace:** Resolve `$WS`. Automatically redirect any foreign path inputs to `$WS`.
+2. **Context Synchronization:** Read `$WS/<Repo>/SCRATCHPAD.md` first for current state, active tasks, and immediate next steps.
 
 ## 3A. CREDENTIALS & REMOTE ACCESS (`common-element`)
-- **Credentials Directive:** Always check `$WS/common-element/` for shared credentials, host IPs, passwords, tokens, and machine configurations before asking or writing credentials. Key files: `credentials_combined.env`, `credentials_catalog.json`, `network_ip_inventory.md` / `.json`, `vault.py`.
-- **Access Directive (SSH / NAS / Other Computers):** Whenever you need credentials, or access to another NAS, computer, or device (SSH, SMB, ADB, etc.), look it up in `$WS/common-element/` first. Use what you find there to connect directly. Only ask the user if the entry is missing, then add the new info back to `common-element`.
-- `common-element` has its own authoritative blocking directive: never apply this document's tracking/bootstrap rules inside it, and never print or commit decrypted secrets.
+- **Credentials:** Always check `$WS/common-element/` (`credentials_combined.env`, `credentials_catalog.json`, `network_ip_inventory.*`, `vault.py`) before asking or writing credentials.
+- **Remote Access:** For SSH, NAS, SMB, ADB, or remote machines, query `$WS/common-element/` first and connect directly. Add newly discovered credentials back to `common-element`.
+- `common-element` has its own authoritative blocking directive: never apply tracking/bootstrap rules inside it, and never print or commit decrypted secrets.
 
 ## 4. FILE MANAGEMENT & TASK EXECUTION
-You must differentiate between **Actionable** files and **Historical/Archive** files.
-
 - **Actionable Files (READ REQUIRED for active tasks):**
-  - `BUG_REPORT.md`: Contains active, unresolved bugs.
-  - `FUTURE_FEATURES.md`: Contains the upcoming roadmap and planned feature requests.
+  - `BUG_REPORT.md`: Active, unresolved bugs.
+  - `FUTURE_FEATURES.md`: Upcoming roadmap and planned features.
 - **Historical Archives (NEVER READ during normal development):**
-  - `BUG_FIX.md`: Past resolved bugs. 
-  - `FEATURES.md`: Already completed features. 
-  *(Note: These are historical reference archives only. Do not waste context window reading them unless explicitly asked to review history).*
+  - `BUG_FIX.md`: Past resolved bugs.
+  - `FEATURES.md`: Completed features.
+  *(Reference only; do not waste context tokens reading these unless explicitly asked).*
 
 ## 5. COMPLETION PROTOCOLS
-- **Bug Fix Completion:** When a bug is successfully resolved, completely remove its entry from `BUG_REPORT.md` and append it to `BUG_FIX.md`. You must include a brief explanation of the fix and the verification steps taken.
-- **Feature Completion:** When a feature is fully implemented, completely remove it from `FUTURE_FEATURES.md` and append it to `FEATURES.md`. You must include relevant documentation and usage instructions.
+- **Bug Fix:** Remove entry from `BUG_REPORT.md` and append to `BUG_FIX.md` with resolution and verification notes.
+- **Feature Done:** Remove from `FUTURE_FEATURES.md` and append to `FEATURES.md` with documentation and usage notes.
 
 ## 6. CONTINUOUS UPDATE & CRASH RECOVERY PROTOCOL
-To prevent context loss during a power failure, disconnect, or system crash, you MUST continuously update `SCRATCHPAD.md` whenever a bug is diagnosed, a plan is formulated, or code is changed. 
+Update `SCRATCHPAD.md` continuously when diagnosing bugs, formulating plans, or changing code to preserve context across disconnects or restarts.
 
 **Required `SCRATCHPAD.md` Format:**
 ```markdown
+<!-- WS LOCK: $HOME/Documents/Github-$(scutil --get ComputerName 2>/dev/null || hostname -s). Lock all operations to local WS. -->
 ## Last Updated: [Timestamp / Summary]
 ## What Was Done: 
 - [Bullet points of recent changes, decisions, or fixes]
@@ -53,21 +56,28 @@ To prevent context loss during a power failure, disconnect, or system crash, you
 ```
 
 ## 7. ARCHITECTURE & DEPLOYMENT MANDATES
-- **High Availability (HA):** All code, network connections, and services designed or modified MUST focus strictly on high availability and fault tolerance.
+- **High Availability (HA):** All code, connections, and services must prioritize fault tolerance and high availability.
 - **CRITICAL - INTRANET PRODUCTION DEPLOYMENT MANDATE (NEVER LOCALHOST-ONLY):**
-  - All services, web applications, dashboards, and background engines designed for the KBN1 ecosystem are production Intranet services accessed via `https://kbn1.com` or dedicated LAN endpoints.
-  - **A localhost-only build or local desktop test is STRICTLY INCOMPLETE.** Every code change, frontend update, and backend feature must be deployed to the authoritative Intranet backend/host node (e.g. M4 Mini, Synology NAS, or Ryzen Server) and restarted to be considered done.
-  - Always commit and push changes to `origin/main` so that all machines sync the latest code.
-- **App Packaging & Distribution:** Whenever deploying macOS client app binaries, publish exclusively to the VaultFS repository for Munki distribution per `$WS/Munki-Managed-Home-Software-KBN1-AppStore/VAULTFS_PUBLISHING_GUIDE.md`.
-- **CRITICAL - NEVER Install to /Applications:** After building universal binaries, NEVER install or copy directly to `/Applications/`. All applications MUST only be published to the VaultFS repository and distributed through Munki Managed Software.
+  - All services, web apps, and background engines are production Intranet services (`https://kbn1.com` or LAN endpoints).
+  - **Localhost-only builds are strictly incomplete.** Changes must be deployed to the authoritative Intranet backend/host node (M4 Mini, Synology NAS, Ryzen Server) and restarted to be considered done.
+  - Always commit and push changes to `origin/main` so all machines sync the latest code.
+- **App Packaging & Distribution:** Publish macOS client binaries exclusively to the VaultFS repository for Munki distribution per `$WS/Munki-Managed-Home-Software-KBN1-AppStore/VAULTFS_PUBLISHING_GUIDE.md`.
+- **CRITICAL - NEVER Install to /Applications:** Never install or copy binaries directly to `/Applications/`. Distribution is strictly through Munki Managed Software.
+
+## 7A. CENTRAL AI ROUTER & ORCHESTRATION ARCHITECTURE
+- **Authoritative Router Specification:** When developing, integrating, or refactoring any AI-enabled service (LLMs, TTS voice, Whisper, video processing), all workloads must interface through the Central AI Gateway per:
+  `$WS/Home-Router-Orchestration-Dashboard-API/ROUTER_ORCHESTRATION_SPEC.md`
+- **Client App Integration Cheatsheet:** Reference the 1-page integration contract at:
+  `$WS/Home-Router-Orchestration-Dashboard-API/APP_INTEGRATION_GUIDE.md`
+- **Zero Hardcoding Rule:** Never bind client apps directly to worker IPs or GPU ports (e.g. `192.168.0.64:11434`). Route through the dynamic gateway (`http://192.168.0.32:8000` / `https://kbn1.com/ai-router`) to preserve automatic failover, slot concurrency, and roaming laptop latency protection.
 
 ---
 
 ## 🚀 INITIAL BOOTSTRAP INSTRUCTIONS (If files do not exist)
-If setting up this repository for the first time, generate the following files in the project root:
-1. `BUG_REPORT.md` - Initialize with: `_No active bugs._`
-2. `BUG_FIX.md` - Initialize with a header explaining it is the archive of completed bug fixes.
-3. `FUTURE_FEATURES.md` - Initialize with a header for tracking planned/upcoming feature requests.
-4. `FEATURES.md` - Initialize with a header to document completed, active features.
-5. `SCRATCHPAD.md` - Initialize using the exact layout defined in Section 6, placing these Agent Directives at the very top of the file, followed by the initial status.
+Generate in project root:
+1. `BUG_REPORT.md` - `_No active bugs._`
+2. `BUG_FIX.md` - Archive of completed bug fixes.
+3. `FUTURE_FEATURES.md` - Planned/upcoming feature requests.
+4. `FEATURES.md` - Completed, active features.
+5. `SCRATCHPAD.md` - Layout from Section 6 with WS lock comment at the top.
 6. `GEMINI.md` / `CLAUDE.md` - (As needed to mirror these core directives).
