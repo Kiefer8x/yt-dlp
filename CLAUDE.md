@@ -61,14 +61,14 @@ Update `SCRATCHPAD.md` continuously when diagnosing bugs, formulating plans, or 
   - All services, web apps, and background engines are production Intranet services (`https://kbn1.com` or LAN endpoints).
   - **Localhost-only builds are strictly incomplete.** Changes must be deployed to the authoritative Intranet backend/host node (M4 Mini, Synology NAS, Ryzen Server) and restarted to be considered done.
   - Always commit and push changes to `origin/main` so all machines sync the latest code.
-- **App Packaging & Distribution:** Publish macOS client binaries exclusively to the VaultFS repository for Munki distribution per `$WS/Munki-Managed-Home-Software-KBN1-AppStore/VAULTFS_PUBLISHING_GUIDE.md`.
+- **App Packaging & Distribution:** Publish macOS client binaries exclusively to the VaultFS repository for Munki distribution per `$WS/1-Dual-Agent-MD/guides/VAULTFS_PUBLISHING_GUIDE.md`.
 - **CRITICAL - NEVER Install to /Applications:** Never install or copy binaries directly to `/Applications/`. Distribution is strictly through Munki Managed Software.
 
 ## 7A. CENTRAL AI ROUTER & ORCHESTRATION ARCHITECTURE
 - **Authoritative Router Specification:** When developing, integrating, or refactoring any AI-enabled service (LLMs, TTS voice, Whisper, video processing), all workloads must interface through the Central AI Gateway per:
-  `$WS/Home-Router-Orchestration-Dashboard-API/ROUTER_ORCHESTRATION_SPEC.md`
+  `$WS/1-Dual-Agent-MD/guides/ROUTER_ORCHESTRATION_SPEC.md`
 - **Client App Integration Cheatsheet:** Reference the 1-page integration contract at:
-  `$WS/Home-Router-Orchestration-Dashboard-API/APP_INTEGRATION_GUIDE.md`
+  `$WS/1-Dual-Agent-MD/guides/APP_INTEGRATION_GUIDE.md`
 - **Zero Hardcoding Rule:** Never bind client apps directly to worker IPs or GPU ports (e.g. `192.168.0.64:11434`). Route through the dynamic gateway (`http://192.168.0.32:8000` / `https://kbn1.com/ai-router`) to preserve automatic failover, slot concurrency, and roaming laptop latency protection.
 
 ---
